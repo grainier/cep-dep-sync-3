@@ -1,5 +1,7 @@
 -- Unique Execution Plan Name
 @Plan:name( 'HouseBasedLoadPrediction' )
+@Plan:dist(receiverParallelism='4')
+@Plan:dist(publisherParallelism='4')
 
 -- Define Streams
 @Import( 'SmartPlugsDataStream:1.0.0' )
@@ -15,7 +17,7 @@ define table historicalDataTable ( slice_id string, sum double, count long ) ;
 
 -- Take in SmartPlugsDataStream and drop metadata, convert it's timestamp (ts) into milliseconds,
 -- calculate slice and emit modified events to formattedDataStream (intermediate stream)
-@dist(parallel='2', execGroup='1')
+@dist(parallel='8', execGroup='1')
 partition with (house_id of smartPlugDataStream)
 begin
 	@info( name = 'FormatDataStream' )
@@ -30,7 +32,7 @@ end;
 -- slice and emmit it to historicalDataStream (intermediate stream). 
 -- assumption : events are in ascending order of time (so most recently emitted data)
 -- will represent all the previous data of a particular slice
-@dist(parallel='2', execGroup='2')
+@dist(parallel='8', execGroup='2')
 partition with (slice_id of formattedDataStream)
 begin
 	@info( name = 'AddToHistoricalDataStream' )
@@ -42,7 +44,7 @@ end ;
 
 
 -- Add Historical data into historicalDataTable Table
-@dist(parallel='1', execGroup='3')
+@dist(parallel='8', execGroup='3')
 @info( name = 'AddToHistoricalDataTable' )
 from historicalDataStream[ not (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -52,7 +54,7 @@ insert into historicalDataTable;
 
 
 -- Update Historical data in historicalDataTable Table
-@dist(parallel='1', execGroup='3')
+@dist(parallel='8', execGroup='3')
 @info( name = 'UpdateHistoricalDataTable' )
 from historicalDataStream[ (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -63,7 +65,7 @@ update historicalDataTable
 
 -- Calculate Load Prediction and Emit to Stream (when there are no historical data)
 -- And emit calculated data into predictedLoadStream (intermediate)
-@dist(parallel='1', execGroup='3')
+@dist(parallel='8', execGroup='3')
 @info( name = 'CalculatePredicitonWithOutHistoricalData' )
 from formattedDataStream[ not (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -75,7 +77,7 @@ insert into predictedLoadStream;
 
 -- Calculate Load Prediction Stream (when there are historical data)
 -- And emit calculated data into predictedLoadStream (intermediate)
-@dist(parallel='1', execGroup='3')
+@dist(parallel='8', execGroup='3')
 @info( name = 'CalculatePredicitonWithHistoricalData' )
 from formattedDataStream[ (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -88,7 +90,7 @@ insert into predictedLoadStream;
 
 -- Output Load Prediction Stream every 30 seconds
 @info( name = 'OutputPredictedLoad' )
-@dist(parallel='1', execGroup='4')
+@dist(parallel='8', execGroup='4')
 from predictedLoadStream
 select ts, house_id, predicted_load
 group by house_id
