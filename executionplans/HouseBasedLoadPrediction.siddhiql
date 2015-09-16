@@ -44,7 +44,7 @@ end ;
 
 
 -- Add Historical data into historicalDataTable Table
-@dist(parallel='8', execGroup='3')
+@dist(parallel='1', execGroup='3')
 @info( name = 'AddToHistoricalDataTable' )
 from historicalDataStream[ not (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -54,7 +54,7 @@ insert into historicalDataTable;
 
 
 -- Update Historical data in historicalDataTable Table
-@dist(parallel='8', execGroup='3')
+@dist(parallel='1', execGroup='3')
 @info( name = 'UpdateHistoricalDataTable' )
 from historicalDataStream[ (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -65,7 +65,7 @@ update historicalDataTable
 
 -- Calculate Load Prediction and Emit to Stream (when there are no historical data)
 -- And emit calculated data into predictedLoadStream (intermediate)
-@dist(parallel='8', execGroup='3')
+@dist(parallel='1', execGroup='3')
 @info( name = 'CalculatePredicitonWithOutHistoricalData' )
 from formattedDataStream[ not (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
@@ -77,7 +77,7 @@ insert into predictedLoadStream;
 
 -- Calculate Load Prediction Stream (when there are historical data)
 -- And emit calculated data into predictedLoadStream (intermediate)
-@dist(parallel='8', execGroup='3')
+@dist(parallel='1', execGroup='3')
 @info( name = 'CalculatePredicitonWithHistoricalData' )
 from formattedDataStream[ (
 	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
