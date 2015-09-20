@@ -12,6 +12,7 @@ define stream plugBasedLoadPredictionStream ( ts long, house_id string, househol
 
 
 -- Define In-Memory Tables (can use RDBMS if required)
+@IndexBy('slice_id')
 define table historicalDataTable ( slice_id string, sum double, count long ) ;
 
 
@@ -43,24 +44,12 @@ begin
 end;
 
 
--- Add Historical data into historicalDataTable Table
-@dist(parallel='1', execGroup='3')
-@info( name = 'AddToHistoricalDataTable' )
-from historicalDataStream[ not (
-	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
-)]
-select slice_id, sum, count
-insert into historicalDataTable;
-
-
 -- Update Historical data in historicalDataTable Table
 @dist(parallel='1', execGroup='3')
-@info( name = 'UpdateHistoricalDataTable' )
-from historicalDataStream[ (
-	( slice_id == historicalDataTable.slice_id ) in historicalDataTable
-)]
-update historicalDataTable
-	on slice_id == historicalDataTable.slice_id;
+@info( name = 'AddToHistoricalDataTable' )
+from historicalDataStream
+select slice_id, sum, count
+insert into historicalDataTable;
 
 
 -- Calculate Load Prediction and Emit to Stream (when there are no historical data)
